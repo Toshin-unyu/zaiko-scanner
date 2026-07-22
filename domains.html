@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>許可ドメイン管理</title>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+  h1 { font-size: 18px; }
+  ul { max-width: 480px; margin: 16px auto; padding: 0; list-style: none; }
+  li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #222; border-radius: 6px; margin-bottom: 8px; }
+  button.remove { background: #b71c1c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; }
+  form { max-width: 480px; margin: 16px auto; display: flex; gap: 8px; }
+  input { flex: 1; font-size: 16px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: #eee; }
+  button.add { font-size: 16px; padding: 8px 16px; border-radius: 6px; border: none; background: #1976d2; color: #fff; }
+  #status { text-align: center; margin-top: 8px; font-size: 14px; min-height: 20px; }
+  #status.ok { color: #4caf50; }
+  #status.ng { color: #f44336; }
+  a.back-link { display: block; text-align: center; margin-top: 20px; color: #90caf9; }
+</style>
+</head>
+<body>
+<h1>登録可能な商品ページドメイン</h1>
+<ul id="domain-list"></ul>
+
+<form id="form">
+  <input id="domain" type="text" placeholder="例: www.amazon.co.jp" required>
+  <button class="add" type="submit">追加</button>
+</form>
+<div id="status"></div>
+<a class="back-link" href="admin.html">商品登録画面に戻る</a>
+
+<script src="config.js"></script>
+<script>
+const listEl = document.getElementById('domain-list');
+const statusEl = document.getElementById('status');
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = cls || '';
+}
+
+async function loadDomains() {
+  const res = await fetch(`${GAS_API_URL}?action=domains`);
+  const data = await res.json();
+  listEl.innerHTML = '';
+  (data.domains || []).forEach(domain => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = domain;
+    const btn = document.createElement('button');
+    btn.className = 'remove';
+    btn.textContent = '削除';
+    btn.addEventListener('click', () => removeDomain(domain));
+    li.appendChild(span);
+    li.appendChild(btn);
+    listEl.appendChild(li);
+  });
+}
+
+async function removeDomain(domain) {
+  setStatus('削除中...');
+  const res = await fetch(GAS_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'removeDomain', domain })
+  });
+  const data = await res.json();
+  if (data.success) {
+    setStatus('削除しました', 'ok');
+    loadDomains();
+  } else {
+    setStatus(data.message || '削除に失敗しました', 'ng');
+  }
+}
+
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domainInput = document.getElementById('domain');
+  setStatus('追加中...');
+  const res = await fetch(GAS_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'addDomain', domain: domainInput.value.trim() })
+  });
+  const data = await res.json();
+  if (data.success) {
+    setStatus('追加しました', 'ok');
+    domainInput.value = '';
+    loadDomains();
+  } else {
+    setStatus(data.message || '追加に失敗しました', 'ng');
+  }
+});
+
+loadDomains();
+</script>
+</body>
+</html>
