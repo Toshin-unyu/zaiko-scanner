@@ -128,26 +128,37 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  let payload;
+  const lock = LockService.getScriptLock();
   try {
-    payload = JSON.parse(e.postData.contents);
+    lock.waitLock(10000);
   } catch (err) {
-    return jsonResponse_({ success: false, message: 'リクエストの形式が不正です' });
+    return jsonResponse_({ success: false, message: 'サーバーが混み合っています。しばらくしてから再度お試しください' });
   }
 
-  if (payload.action === 'addDomain') {
-    return addDomain_(payload.domain, payload.adminKey);
+  try {
+    let payload;
+    try {
+      payload = JSON.parse(e.postData.contents);
+    } catch (err) {
+      return jsonResponse_({ success: false, message: 'リクエストの形式が不正です' });
+    }
+
+    if (payload.action === 'addDomain') {
+      return addDomain_(payload.domain, payload.adminKey);
+    }
+    if (payload.action === 'removeDomain') {
+      return removeDomain_(payload.domain, payload.adminKey);
+    }
+    if (payload.action === 'updateProduct') {
+      return updateProduct_(payload.jan, payload.url, payload.adminKey);
+    }
+    if (payload.action === 'deleteProduct') {
+      return deleteProduct_(payload.jan, payload.adminKey);
+    }
+    return registerProduct_(payload);
+  } finally {
+    lock.releaseLock();
   }
-  if (payload.action === 'removeDomain') {
-    return removeDomain_(payload.domain, payload.adminKey);
-  }
-  if (payload.action === 'updateProduct') {
-    return updateProduct_(payload.jan, payload.url, payload.adminKey);
-  }
-  if (payload.action === 'deleteProduct') {
-    return deleteProduct_(payload.jan, payload.adminKey);
-  }
-  return registerProduct_(payload);
 }
 
 function updateProduct_(jan, url, adminKey) {

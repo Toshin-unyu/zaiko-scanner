@@ -78,7 +78,7 @@ async function loadProducts() {
       const saveBtn = document.createElement('button');
       saveBtn.className = 'save';
       saveBtn.textContent = '保存';
-      saveBtn.addEventListener('click', () => updateProduct(product.jan, urlInput.value.trim()));
+      saveBtn.addEventListener('click', () => updateProduct(product.jan, urlInput.value.trim(), saveBtn));
       row.appendChild(saveBtn);
 
       const deleteBtn = document.createElement('button');
@@ -86,7 +86,7 @@ async function loadProducts() {
       deleteBtn.textContent = '削除';
       deleteBtn.addEventListener('click', () => {
         if (confirm(`JANコード ${product.jan} を削除してもよろしいですか？`)) {
-          deleteProduct(product.jan);
+          deleteProduct(product.jan, deleteBtn);
         }
       });
       row.appendChild(deleteBtn);
@@ -104,7 +104,8 @@ async function loadProducts() {
   }
 }
 
-async function updateProduct(jan, url) {
+async function updateProduct(jan, url, btn) {
+  btn.disabled = true;
   setStatus('更新中...');
   try {
     const res = await fetch(GAS_API_URL, {
@@ -118,13 +119,16 @@ async function updateProduct(jan, url) {
       loadProducts();
     } else {
       setStatus(data.message || '更新に失敗しました', 'ng');
+      btn.disabled = false;
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
+    btn.disabled = false;
   }
 }
 
-async function deleteProduct(jan) {
+async function deleteProduct(jan, btn) {
+  btn.disabled = true;
   setStatus('削除中...');
   try {
     const res = await fetch(GAS_API_URL, {
@@ -138,9 +142,11 @@ async function deleteProduct(jan) {
       loadProducts();
     } else {
       setStatus(data.message || '削除に失敗しました', 'ng');
+      btn.disabled = false;
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
+    btn.disabled = false;
   }
 }
 

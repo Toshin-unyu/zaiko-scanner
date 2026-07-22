@@ -36,7 +36,7 @@
   <input id="jan" name="jan" type="text" inputmode="numeric" placeholder="カメラで読み取るか手入力" required>
   <label for="url">商品ページURL</label>
   <input id="url" name="url" type="url" placeholder="https://www.solel-arena.jp/..." required>
-  <button type="submit">登録する</button>
+  <button type="submit" id="submit-btn">登録する</button>
 </form>
 <div id="status"></div>
 <a class="back-link" href="scan.html">スキャン画面に戻る</a>
@@ -105,8 +105,11 @@ codeReader.decodeFromVideoDevice(undefined, 'video', (result, err) => {
   setStatus('カメラを起動できませんでした: ' + err.message, 'ng');
 });
 
+const submitBtn = document.getElementById('submit-btn');
+
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  submitBtn.disabled = true;
   setStatus('登録中...');
   try {
     const res = await fetch(GAS_API_URL, {
@@ -126,6 +129,8 @@ document.getElementById('form').addEventListener('submit', async (e) => {
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
+  } finally {
+    submitBtn.disabled = false;
   }
 });
 </script>
