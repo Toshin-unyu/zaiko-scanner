@@ -111,6 +111,9 @@ document.getElementById('form').addEventListener('submit', async (e) => {
     if (data.success) {
       setStatus(data.updated ? '既存データを更新しました' : '新規登録しました', 'ok');
       urlInput.value = '';
+      janInput.value = '';
+      handled = false;
+      clearBox();
     } else {
       setStatus(data.message || '登録に失敗しました', 'ng');
     }
