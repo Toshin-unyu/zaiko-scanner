@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在庫スキャナー</title>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+  h1 { font-size: 18px; }
+  #video-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+  #status { text-align: center; margin-top: 16px; font-size: 16px; min-height: 24px; }
+  #status.ok { color: #4caf50; }
+  #status.ng { color: #f44336; }
+  a.admin-link { display: block; text-align: center; margin-top: 24px; color: #90caf9; }
+</style>
+</head>
+<body>
+<h1>JANコードをカメラにかざしてください</h1>
+<div id="video-container">
+  <video id="video" muted playsinline></video>
+</div>
+<div id="status"></div>
+<a class="admin-link" href="admin.html">未登録商品の登録はこちら</a>
+
+<script src="config.js"></script>
+<script>
+const statusEl = document.getElementById('status');
+const codeReader = new ZXing.BrowserMultiFormatReader();
+let handled = false;
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = cls || '';
+}
+
+async function lookup(jan) {
+  setStatus(`JANコード ${jan} を検索中...`);
+  try {
+    const res = await fetch(`${GAS_API_URL}?jan=${encodeURIComponent(jan)}`);
+    const data = await res.json();
+    if (data.success && data.found) {
+      setStatus('商品ページへ移動します', 'ok');
+      window.location.href = data.url;
+    } else {
+      setStatus(`未登録のJANコードです（${jan}）`, 'ng');
+      handled = false;
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
+    handled = false;
+  }
+}
+
+codeReader.decodeFromVideoDevice(undefined, 'video', (result, err) => {
+  if (result && !handled) {
+    handled = true;
+    lookup(result.getText());
+  }
+}).catch(err => {
+  setStatus('カメラを起動できませんでした: ' + err.message, 'ng');
+});
+</script>
+</body>
+</html>
