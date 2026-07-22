@@ -30,7 +30,7 @@
 
 <form id="form">
   <input id="domain" type="text" placeholder="例: www.amazon.co.jp" required>
-  <button class="add" type="submit">追加</button>
+  <button class="add" type="submit" id="add-btn">追加</button>
 </form>
 <div id="status"></div>
 <a class="back-link" href="admin.html">商品登録画面に戻る</a>
@@ -59,7 +59,7 @@ async function loadDomains() {
       const btn = document.createElement('button');
       btn.className = 'remove';
       btn.textContent = '削除';
-      btn.addEventListener('click', () => removeDomain(domain));
+      btn.addEventListener('click', () => removeDomain(domain, btn));
       li.appendChild(span);
       li.appendChild(btn);
       listEl.appendChild(li);
@@ -69,7 +69,8 @@ async function loadDomains() {
   }
 }
 
-async function removeDomain(domain) {
+async function removeDomain(domain, btn) {
+  btn.disabled = true;
   setStatus('削除中...');
   try {
     const res = await fetch(GAS_API_URL, {
@@ -83,9 +84,11 @@ async function removeDomain(domain) {
       loadDomains();
     } else {
       setStatus(data.message || '削除に失敗しました', 'ng');
+      btn.disabled = false;
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
+    btn.disabled = false;
   }
 }
 
@@ -96,9 +99,12 @@ document.getElementById('key-form').addEventListener('submit', (e) => {
   setStatus('管理キーを保存しました', 'ok');
 });
 
+const addBtn = document.getElementById('add-btn');
+
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const domainInput = document.getElementById('domain');
+  addBtn.disabled = true;
   setStatus('追加中...');
   try {
     const res = await fetch(GAS_API_URL, {
@@ -116,6 +122,8 @@ document.getElementById('form').addEventListener('submit', async (e) => {
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
+  } finally {
+    addBtn.disabled = false;
   }
 });
 
