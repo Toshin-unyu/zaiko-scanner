@@ -9,7 +9,9 @@
   body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
   h1 { font-size: 18px; }
   #video-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; }
-  video { width: 100%; border-radius: 8px; background: #000; }
+  video { width: 100%; border-radius: 8px; background: #000; display: block; }
+  #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  button.rescan { display: block; margin: 8px auto 0; font-size: 14px; padding: 6px 14px; border-radius: 6px; border: none; background: #444; color: #eee; }
   form { max-width: 480px; margin: 16px auto; display: flex; flex-direction: column; gap: 8px; }
   label { font-size: 13px; color: #aaa; }
   input { font-size: 16px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: #eee; }
@@ -25,7 +27,9 @@
 <h1>JANコード登録</h1>
 <div id="video-container">
   <video id="video" muted playsinline></video>
+  <canvas id="overlay"></canvas>
 </div>
+<button class="rescan" id="rescan-btn" type="button">再スキャン</button>
 
 <form id="form">
   <label for="jan">JANコード</label>
@@ -43,17 +47,52 @@
 const statusEl = document.getElementById('status');
 const janInput = document.getElementById('jan');
 const urlInput = document.getElementById('url');
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
 const codeReader = new ZXing.BrowserMultiFormatReader();
+let handled = false;
 
 function setStatus(text, cls) {
   statusEl.textContent = text;
   statusEl.className = cls || '';
 }
 
+function drawBox(points) {
+  if (!video.videoWidth) return;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!points || points.length === 0) return;
+  ctx.strokeStyle = '#4caf50';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(p.getX(), p.getY());
+    else ctx.lineTo(p.getX(), p.getY());
+  });
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function clearBox() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+document.getElementById('rescan-btn').addEventListener('click', () => {
+  handled = false;
+  clearBox();
+  setStatus('');
+});
+
 codeReader.decodeFromVideoDevice(undefined, 'video', (result, err) => {
   if (result) {
-    janInput.value = result.getText();
-    setStatus('JANコードを読み取りました');
+    drawBox(result.getResultPoints());
+    if (!handled) {
+      handled = true;
+      janInput.value = result.getText();
+      setStatus(`読み取り値: ${result.getText()}（枠内の内容を確認し、違う場合は「再スキャン」を押してください）`, 'ok');
+    }
   }
 }).catch(err => {
   setStatus('カメラを起動できませんでした: ' + err.message, 'ng');
