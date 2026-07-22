@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在庫スキャナー 管理画面</title>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+  h1 { font-size: 18px; }
+  #video-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+  form { max-width: 480px; margin: 16px auto; display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 13px; color: #aaa; }
+  input { font-size: 16px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: #eee; }
+  button { font-size: 16px; padding: 10px; border-radius: 6px; border: none; background: #1976d2; color: #fff; }
+  button:active { background: #1565c0; }
+  #status { text-align: center; margin-top: 12px; font-size: 15px; min-height: 22px; }
+  #status.ok { color: #4caf50; }
+  #status.ng { color: #f44336; }
+  a.back-link { display: block; text-align: center; margin-top: 20px; color: #90caf9; }
+</style>
+</head>
+<body>
+<h1>JANコード登録</h1>
+<div id="video-container">
+  <video id="video" muted playsinline></video>
+</div>
+
+<form id="form">
+  <label for="jan">JANコード</label>
+  <input id="jan" name="jan" type="text" inputmode="numeric" placeholder="カメラで読み取るか手入力" required>
+  <label for="url">商品ページURL</label>
+  <input id="url" name="url" type="url" placeholder="https://www.solel-arena.jp/..." required>
+  <button type="submit">登録する</button>
+</form>
+<div id="status"></div>
+<a class="back-link" href="scan.html">スキャン画面に戻る</a>
+
+<script src="config.js"></script>
+<script>
+const statusEl = document.getElementById('status');
+const janInput = document.getElementById('jan');
+const urlInput = document.getElementById('url');
+const codeReader = new ZXing.BrowserMultiFormatReader();
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = cls || '';
+}
+
+codeReader.decodeFromVideoDevice(undefined, 'video', (result, err) => {
+  if (result) {
+    janInput.value = result.getText();
+    setStatus('JANコードを読み取りました');
+  }
+}).catch(err => {
+  setStatus('カメラを起動できませんでした: ' + err.message, 'ng');
+});
+
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setStatus('登録中...');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ jan: janInput.value.trim(), url: urlInput.value.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus(data.updated ? '既存データを更新しました' : '新規登録しました', 'ok');
+      urlInput.value = '';
+    } else {
+      setStatus(data.message || '登録に失敗しました', 'ng');
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
+  }
+});
+</script>
+</body>
+</html>
