@@ -16,6 +16,8 @@
   a.admin-link { display: block; text-align: center; margin-top: 24px; color: #90caf9; }
   #product-link { display: none; text-align: center; margin-top: 12px; }
   #product-link a { display: inline-block; font-size: 16px; padding: 12px 24px; border-radius: 8px; background: #1976d2; color: #fff; text-decoration: none; }
+  #register-link { display: none; text-align: center; margin-top: 12px; }
+  #register-link a { display: inline-block; font-size: 16px; padding: 12px 24px; border-radius: 8px; background: #444; color: #eee; text-decoration: none; }
   button.rescan { display: block; margin: 12px auto 0; font-size: 14px; padding: 6px 14px; border-radius: 6px; border: none; background: #444; color: #eee; }
 </style>
 </head>
@@ -26,6 +28,7 @@
 </div>
 <div id="status"></div>
 <div id="product-link"><a id="product-link-a" href="#" target="_blank" rel="noopener noreferrer">商品ページを開く</a></div>
+<div id="register-link"><a id="register-link-a" href="#">このJANコードを登録する</a></div>
 <button class="rescan" id="rescan-btn" type="button" style="display:none;">別の商品をスキャン</button>
 <a class="admin-link" href="admin.html">未登録商品の登録はこちら</a>
 
@@ -34,6 +37,8 @@
 const statusEl = document.getElementById('status');
 const productLinkEl = document.getElementById('product-link');
 const productLinkA = document.getElementById('product-link-a');
+const registerLinkEl = document.getElementById('register-link');
+const registerLinkA = document.getElementById('register-link-a');
 const rescanBtn = document.getElementById('rescan-btn');
 const codeReader = new ZXing.BrowserMultiFormatReader();
 let handled = false;
@@ -46,6 +51,7 @@ function setStatus(text, cls) {
 function resetScan() {
   handled = false;
   productLinkEl.style.display = 'none';
+  registerLinkEl.style.display = 'none';
   rescanBtn.style.display = 'none';
   setStatus('');
 }
@@ -64,7 +70,9 @@ async function lookup(jan) {
       rescanBtn.style.display = 'block';
     } else {
       setStatus(`未登録のJANコードです（${jan}）`, 'ng');
-      handled = false;
+      registerLinkA.href = `admin.html?jan=${encodeURIComponent(jan)}`;
+      registerLinkEl.style.display = 'block';
+      rescanBtn.style.display = 'block';
     }
   } catch (err) {
     setStatus('通信エラーが発生しました', 'ng');
