@@ -75,7 +75,7 @@ async function removeDomain(domain) {
     const res = await fetch(GAS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'removeDomain', domain, adminKey: adminKeyInput.value })
+      body: JSON.stringify({ action: 'removeDomain', domain, adminKey: adminKeyInput.value.trim() })
     });
     const data = await res.json();
     if (data.success) {
@@ -91,6 +91,7 @@ async function removeDomain(domain) {
 
 document.getElementById('key-form').addEventListener('submit', (e) => {
   e.preventDefault();
+  adminKeyInput.value = adminKeyInput.value.trim();
   localStorage.setItem('zaikoScannerAdminKey', adminKeyInput.value);
   setStatus('管理キーを保存しました', 'ok');
 });
@@ -103,7 +104,7 @@ document.getElementById('form').addEventListener('submit', async (e) => {
     const res = await fetch(GAS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'addDomain', domain: domainInput.value.trim(), adminKey: adminKeyInput.value })
+      body: JSON.stringify({ action: 'addDomain', domain: domainInput.value.trim(), adminKey: adminKeyInput.value.trim() })
     });
     const data = await res.json();
     if (data.success) {
