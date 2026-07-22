@@ -84,7 +84,11 @@ async function loadProducts() {
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete';
       deleteBtn.textContent = '削除';
-      deleteBtn.addEventListener('click', () => deleteProduct(product.jan));
+      deleteBtn.addEventListener('click', () => {
+        if (confirm(`JANコード ${product.jan} を削除してもよろしいですか？`)) {
+          deleteProduct(product.jan);
+        }
+      });
       row.appendChild(deleteBtn);
 
       li.appendChild(row);
