@@ -9,9 +9,20 @@ function getAdminKey_() {
   return PropertiesService.getScriptProperties().getProperty(ADMIN_KEY_PROPERTY);
 }
 
+function timingSafeEqual_(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 function isValidAdminKey_(key) {
   const adminKey = getAdminKey_();
-  return !!adminKey && key === adminKey;
+  return !!adminKey && typeof key === 'string' && timingSafeEqual_(key, adminKey);
 }
 
 function getSheet_() {
@@ -86,18 +97,6 @@ function isAllowedUrl_(url) {
 function doGet(e) {
   if (e.parameter.action === 'domains') {
     return jsonResponse_({ success: true, domains: getAllowedDomains_() });
-  }
-
-  if (e.parameter.action === 'bootstrapAdminKey') {
-    if (getAdminKey_()) {
-      return jsonResponse_({ success: false, message: '既に設定済みです' });
-    }
-    const key = e.parameter.key;
-    if (!key || key.length < 16) {
-      return jsonResponse_({ success: false, message: 'keyは16文字以上で指定してください' });
-    }
-    PropertiesService.getScriptProperties().setProperty(ADMIN_KEY_PROPERTY, key);
-    return jsonResponse_({ success: true });
   }
 
   const jan = e.parameter.jan;
