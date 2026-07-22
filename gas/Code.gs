@@ -1,5 +1,6 @@
 const SHEET_NAME = 'マスタ';
 const HEADER = ['JANコード', '商品ページURL', '登録日時'];
+const ALLOWED_HOSTNAME = 'solution.soloel.com';
 
 function getSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -51,6 +52,11 @@ function doPost(e) {
   const url = payload.url;
   if (!jan || !url) {
     return jsonResponse_({ success: false, message: 'jan と url が必要です' });
+  }
+
+  const match = String(url).match(/^https:\/\/([^\/]+)(\/.*)?$/);
+  if (!match || match[1] !== ALLOWED_HOSTNAME) {
+    return jsonResponse_({ success: false, message: `登録できるのは https://${ALLOWED_HOSTNAME}/ 配下のURLのみです` });
   }
 
   const sheet = getSheet_();
