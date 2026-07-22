@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登録商品の管理</title>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+  h1 { font-size: 18px; }
+  ul { max-width: 640px; margin: 16px auto; padding: 0; list-style: none; }
+  li { padding: 10px 12px; background: #222; border-radius: 6px; margin-bottom: 8px; }
+  .jan { font-size: 13px; color: #aaa; margin-bottom: 4px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input { flex: 1; font-size: 14px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #eee; }
+  button.save { background: #1976d2; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; }
+  button.delete { background: #b71c1c; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; }
+  form.key-form { max-width: 640px; margin: 0 auto 16px; display: flex; gap: 8px; }
+  form.key-form input { flex: 1; font-size: 16px; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: #eee; }
+  form.key-form button { font-size: 16px; padding: 8px 16px; border-radius: 6px; border: none; background: #1976d2; color: #fff; }
+  #status { text-align: center; margin-top: 8px; font-size: 14px; min-height: 20px; }
+  #status.ok { color: #4caf50; }
+  #status.ng { color: #f44336; }
+  a.back-link { display: block; text-align: center; margin-top: 20px; color: #90caf9; }
+</style>
+</head>
+<body>
+<h1>登録商品の管理</h1>
+
+<form class="key-form" id="key-form">
+  <input id="admin-key" type="password" placeholder="管理キー" autocomplete="off">
+  <button type="submit">保存</button>
+</form>
+
+<ul id="product-list"></ul>
+<div id="status"></div>
+<a class="back-link" href="admin.html">商品登録画面に戻る</a>
+
+<script src="config.js"></script>
+<script>
+const listEl = document.getElementById('product-list');
+const statusEl = document.getElementById('status');
+const adminKeyInput = document.getElementById('admin-key');
+adminKeyInput.value = localStorage.getItem('zaikoScannerAdminKey') || '';
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = cls || '';
+}
+
+document.getElementById('key-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  adminKeyInput.value = adminKeyInput.value.trim();
+  localStorage.setItem('zaikoScannerAdminKey', adminKeyInput.value);
+  setStatus('管理キーを保存しました', 'ok');
+});
+
+async function loadProducts() {
+  try {
+    const res = await fetch(`${GAS_API_URL}?action=products`);
+    const data = await res.json();
+    listEl.innerHTML = '';
+    (data.products || []).forEach(product => {
+      const li = document.createElement('li');
+
+      const janDiv = document.createElement('div');
+      janDiv.className = 'jan';
+      janDiv.textContent = `JAN: ${product.jan}`;
+      li.appendChild(janDiv);
+
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const urlInput = document.createElement('input');
+      urlInput.type = 'url';
+      urlInput.value = product.url;
+      row.appendChild(urlInput);
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'save';
+      saveBtn.textContent = '保存';
+      saveBtn.addEventListener('click', () => updateProduct(product.jan, urlInput.value.trim()));
+      row.appendChild(saveBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete';
+      deleteBtn.textContent = '削除';
+      deleteBtn.addEventListener('click', () => deleteProduct(product.jan));
+      row.appendChild(deleteBtn);
+
+      li.appendChild(row);
+      listEl.appendChild(li);
+    });
+    if ((data.products || []).length === 0) {
+      const li = document.createElement('li');
+      li.textContent = '登録済み商品はありません';
+      listEl.appendChild(li);
+    }
+  } catch (err) {
+    setStatus('一覧の取得に失敗しました（通信エラー）', 'ng');
+  }
+}
+
+async function updateProduct(jan, url) {
+  setStatus('更新中...');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'updateProduct', jan, url, adminKey: adminKeyInput.value.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('更新しました', 'ok');
+      loadProducts();
+    } else {
+      setStatus(data.message || '更新に失敗しました', 'ng');
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
+  }
+}
+
+async function deleteProduct(jan) {
+  setStatus('削除中...');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'deleteProduct', jan, adminKey: adminKeyInput.value.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('削除しました', 'ok');
+      loadProducts();
+    } else {
+      setStatus(data.message || '削除に失敗しました', 'ng');
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
+  }
+}
+
+loadProducts();
+</script>
+</body>
+</html>

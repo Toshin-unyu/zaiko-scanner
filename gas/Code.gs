@@ -72,6 +72,18 @@ function findRowByJan_(sheet, jan) {
   return null;
 }
 
+function getAllProducts_() {
+  const sheet = getSheet_();
+  const values = sheet.getDataRange().getValues();
+  const products = [];
+  for (let i = 1; i < values.length; i++) {
+    const jan = String(values[i][0]).trim();
+    if (!jan) continue;
+    products.push({ jan, url: values[i][1] });
+  }
+  return products;
+}
+
 function findDomainRow_(sheet, domain) {
   const values = sheet.getDataRange().getValues();
   for (let i = 1; i < values.length; i++) {
@@ -97,6 +109,10 @@ function isAllowedUrl_(url) {
 function doGet(e) {
   if (e.parameter.action === 'domains') {
     return jsonResponse_({ success: true, domains: getAllowedDomains_() });
+  }
+
+  if (e.parameter.action === 'products') {
+    return jsonResponse_({ success: true, products: getAllProducts_() });
   }
 
   const jan = e.parameter.jan;
@@ -125,7 +141,49 @@ function doPost(e) {
   if (payload.action === 'removeDomain') {
     return removeDomain_(payload.domain, payload.adminKey);
   }
+  if (payload.action === 'updateProduct') {
+    return updateProduct_(payload.jan, payload.url, payload.adminKey);
+  }
+  if (payload.action === 'deleteProduct') {
+    return deleteProduct_(payload.jan, payload.adminKey);
+  }
   return registerProduct_(payload);
+}
+
+function updateProduct_(jan, url, adminKey) {
+  if (!isValidAdminKey_(adminKey)) {
+    return jsonResponse_({ success: false, message: '管理キーが正しくありません' });
+  }
+  if (!jan || !url) {
+    return jsonResponse_({ success: false, message: 'jan と url が必要です' });
+  }
+  if (!isAllowedUrl_(url)) {
+    return jsonResponse_({ success: false, message: '登録できるのは許可済みドメイン配下のhttps URLのみです' });
+  }
+  const sheet = getSheet_();
+  const existing = findRowByJan_(sheet, jan);
+  if (!existing) {
+    return jsonResponse_({ success: false, message: 'そのJANコードは登録されていません' });
+  }
+  sheet.getRange(existing.rowIndex, 2).setValue(url);
+  sheet.getRange(existing.rowIndex, 3).setValue(new Date());
+  return jsonResponse_({ success: true });
+}
+
+function deleteProduct_(jan, adminKey) {
+  if (!isValidAdminKey_(adminKey)) {
+    return jsonResponse_({ success: false, message: '管理キーが正しくありません' });
+  }
+  if (!jan) {
+    return jsonResponse_({ success: false, message: 'janが必要です' });
+  }
+  const sheet = getSheet_();
+  const existing = findRowByJan_(sheet, jan);
+  if (!existing) {
+    return jsonResponse_({ success: false, message: 'そのJANコードは登録されていません' });
+  }
+  sheet.deleteRow(existing.rowIndex);
+  return jsonResponse_({ success: true });
 }
 
 function addDomain_(domain, adminKey) {
