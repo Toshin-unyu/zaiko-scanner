@@ -3,6 +3,16 @@ const HEADER = ['JANコード', '商品ページURL', '登録日時'];
 const DOMAIN_SHEET_NAME = '許可ドメイン';
 const DOMAIN_HEADER = ['ドメイン'];
 const DEFAULT_ALLOWED_DOMAIN = 'solution.soloel.com';
+const ADMIN_KEY_PROPERTY = 'ADMIN_KEY';
+
+function getAdminKey_() {
+  return PropertiesService.getScriptProperties().getProperty(ADMIN_KEY_PROPERTY);
+}
+
+function isValidAdminKey_(key) {
+  const adminKey = getAdminKey_();
+  return !!adminKey && key === adminKey;
+}
 
 function getSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -62,7 +72,7 @@ function findDomainRow_(sheet, domain) {
 }
 
 function extractHostname_(url) {
-  const match = String(url).match(/^https:\/\/([^\/:]+)(\/.*)?$/);
+  const match = String(url).match(/^https:\/\/([^\/:?#]+)(\/.*)?$/);
   return match ? match[1] : null;
 }
 
@@ -76,6 +86,18 @@ function isAllowedUrl_(url) {
 function doGet(e) {
   if (e.parameter.action === 'domains') {
     return jsonResponse_({ success: true, domains: getAllowedDomains_() });
+  }
+
+  if (e.parameter.action === 'bootstrapAdminKey') {
+    if (getAdminKey_()) {
+      return jsonResponse_({ success: false, message: '既に設定済みです' });
+    }
+    const key = e.parameter.key;
+    if (!key || key.length < 16) {
+      return jsonResponse_({ success: false, message: 'keyは16文字以上で指定してください' });
+    }
+    PropertiesService.getScriptProperties().setProperty(ADMIN_KEY_PROPERTY, key);
+    return jsonResponse_({ success: true });
   }
 
   const jan = e.parameter.jan;
@@ -99,15 +121,18 @@ function doPost(e) {
   }
 
   if (payload.action === 'addDomain') {
-    return addDomain_(payload.domain);
+    return addDomain_(payload.domain, payload.adminKey);
   }
   if (payload.action === 'removeDomain') {
-    return removeDomain_(payload.domain);
+    return removeDomain_(payload.domain, payload.adminKey);
   }
   return registerProduct_(payload);
 }
 
-function addDomain_(domain) {
+function addDomain_(domain, adminKey) {
+  if (!isValidAdminKey_(adminKey)) {
+    return jsonResponse_({ success: false, message: '管理キーが正しくありません' });
+  }
   domain = String(domain || '').trim();
   if (!domain || /[\/:]/.test(domain)) {
     return jsonResponse_({ success: false, message: 'ドメイン名の形式が不正です（例: solution.soloel.com）' });
@@ -120,12 +145,19 @@ function addDomain_(domain) {
   return jsonResponse_({ success: true });
 }
 
-function removeDomain_(domain) {
+function removeDomain_(domain, adminKey) {
+  if (!isValidAdminKey_(adminKey)) {
+    return jsonResponse_({ success: false, message: '管理キーが正しくありません' });
+  }
   domain = String(domain || '').trim();
   const sheet = getDomainSheet_();
   const rowIndex = findDomainRow_(sheet, domain);
   if (!rowIndex) {
     return jsonResponse_({ success: false, message: 'そのドメインは登録されていません' });
+  }
+  const remainingCount = getAllowedDomains_().length - 1;
+  if (remainingCount < 1) {
+    return jsonResponse_({ success: false, message: '最後の1件は削除できません（登録が全て不可になるため）' });
   }
   sheet.deleteRow(rowIndex);
   return jsonResponse_({ success: true });

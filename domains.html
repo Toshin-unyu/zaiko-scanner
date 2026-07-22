@@ -23,6 +23,11 @@
 <h1>登録可能な商品ページドメイン</h1>
 <ul id="domain-list"></ul>
 
+<form id="key-form">
+  <input id="admin-key" type="password" placeholder="管理キー" autocomplete="off">
+  <button class="add" type="submit">保存</button>
+</form>
+
 <form id="form">
   <input id="domain" type="text" placeholder="例: www.amazon.co.jp" required>
   <button class="add" type="submit">追加</button>
@@ -34,6 +39,8 @@
 <script>
 const listEl = document.getElementById('domain-list');
 const statusEl = document.getElementById('status');
+const adminKeyInput = document.getElementById('admin-key');
+adminKeyInput.value = localStorage.getItem('zaikoScannerAdminKey') || '';
 
 function setStatus(text, cls) {
   statusEl.textContent = text;
@@ -41,55 +48,73 @@ function setStatus(text, cls) {
 }
 
 async function loadDomains() {
-  const res = await fetch(`${GAS_API_URL}?action=domains`);
-  const data = await res.json();
-  listEl.innerHTML = '';
-  (data.domains || []).forEach(domain => {
-    const li = document.createElement('li');
-    const span = document.createElement('span');
-    span.textContent = domain;
-    const btn = document.createElement('button');
-    btn.className = 'remove';
-    btn.textContent = '削除';
-    btn.addEventListener('click', () => removeDomain(domain));
-    li.appendChild(span);
-    li.appendChild(btn);
-    listEl.appendChild(li);
-  });
+  try {
+    const res = await fetch(`${GAS_API_URL}?action=domains`);
+    const data = await res.json();
+    listEl.innerHTML = '';
+    (data.domains || []).forEach(domain => {
+      const li = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = domain;
+      const btn = document.createElement('button');
+      btn.className = 'remove';
+      btn.textContent = '削除';
+      btn.addEventListener('click', () => removeDomain(domain));
+      li.appendChild(span);
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    });
+  } catch (err) {
+    setStatus('一覧の取得に失敗しました（通信エラー）', 'ng');
+  }
 }
 
 async function removeDomain(domain) {
   setStatus('削除中...');
-  const res = await fetch(GAS_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'removeDomain', domain })
-  });
-  const data = await res.json();
-  if (data.success) {
-    setStatus('削除しました', 'ok');
-    loadDomains();
-  } else {
-    setStatus(data.message || '削除に失敗しました', 'ng');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'removeDomain', domain, adminKey: adminKeyInput.value })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('削除しました', 'ok');
+      loadDomains();
+    } else {
+      setStatus(data.message || '削除に失敗しました', 'ng');
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
   }
 }
+
+document.getElementById('key-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  localStorage.setItem('zaikoScannerAdminKey', adminKeyInput.value);
+  setStatus('管理キーを保存しました', 'ok');
+});
 
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const domainInput = document.getElementById('domain');
   setStatus('追加中...');
-  const res = await fetch(GAS_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'addDomain', domain: domainInput.value.trim() })
-  });
-  const data = await res.json();
-  if (data.success) {
-    setStatus('追加しました', 'ok');
-    domainInput.value = '';
-    loadDomains();
-  } else {
-    setStatus(data.message || '追加に失敗しました', 'ng');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'addDomain', domain: domainInput.value.trim(), adminKey: adminKeyInput.value })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('追加しました', 'ok');
+      domainInput.value = '';
+      loadDomains();
+    } else {
+      setStatus(data.message || '追加に失敗しました', 'ng');
+    }
+  } catch (err) {
+    setStatus('通信エラーが発生しました', 'ng');
   }
 });
 
