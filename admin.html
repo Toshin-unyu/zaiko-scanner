@@ -59,6 +59,12 @@ function setStatus(text, cls) {
   statusEl.className = cls || '';
 }
 
+const prefilledJan = new URLSearchParams(window.location.search).get('jan');
+if (prefilledJan) {
+  janInput.value = prefilledJan;
+  handled = true;
+}
+
 function drawBox(points) {
   if (!video.videoWidth) return;
   canvas.width = video.videoWidth;
